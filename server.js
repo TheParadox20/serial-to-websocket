@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
@@ -76,6 +77,16 @@ const setupSerialBridge = async () => {
         return;
     }
 
+    const logsDir = path.join(__dirname, 'logs');
+    fs.mkdirSync(logsDir, { recursive: true });
+    const logFileName = new Date().toISOString().replace(/:/g, '-') + '.log';
+    const logFilePath = path.join(logsDir, logFileName);
+    const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+    logStream.on('error', (error) => {
+        console.error('Serial log stream error:', error.message);
+    });
+    console.log(`Serial log file: ${logFilePath}`);
+
     try {
         const { SerialPort } = await import('serialport');
         const { ReadlineParser } = await import('@serialport/parser-readline');
@@ -98,6 +109,8 @@ const setupSerialBridge = async () => {
         parser.on('data', (line) => {
             const trimmed = line.trim();
             if (!trimmed) return;
+
+            logStream.write(`${new Date().toISOString()} ${trimmed}\n`);
 
             if (trimmed.startsWith('#')) {
                 console.log('Serial log:', trimmed);
