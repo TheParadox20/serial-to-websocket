@@ -1,0 +1,36 @@
+{
+  "name": "messaging",
+  "version": "1.0.0",
+  "description": "Messaging and streaming server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zaumu-beta/messaging.git"
+  },
+  "keywords": [
+    "zaumu",
+    "messaging",
+    "streaming",
+    "express"
+  ],
+  "author": "paradox",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zaumu-beta/messaging/issues"
+  },
+  "homepage": "https://github.com/zaumu-beta/messaging#readme",
+  "dependencies": {
+    "@serialport/parser-readline": "^12.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "mysql": "^2.18.1",
+    "serialport": "^12.0.0",
+    "ws": "^8.18.0"
+  },
+  "type": "module"
+}
