@@ -7,6 +7,7 @@ import { WebSocketServer } from 'ws';
 import http from 'http';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
+import { MongoClient } from 'mongodb';
 
 dotenv.config();
 
@@ -21,6 +22,35 @@ app.use(bodyParser.json());
 const port = process.env.PORT || 80;
 const serialPortPath = process.env.SERIAL_PORT;
 const serialBaudRate = Number(process.env.SERIAL_BAUD_RATE || 115200);
+const mongoUri = process.env.MONGODB_URI;
+
+let dataCollection = null;
+
+const setupMongo = async () => {
+    if (!mongoUri) {
+        console.log('MongoDB disabled: set MONGODB_URI in .env to enable persistence.');
+        return;
+    }
+
+    try {
+        const client = new MongoClient(mongoUri);
+        await client.connect();
+        // Database name is taken from the connection string (e.g. "ranger").
+        dataCollection = client.db().collection('data');
+        console.log('Connected to MongoDB; serial data will be saved to the "data" collection.');
+    } catch (error) {
+        console.error('MongoDB connection failed:', error.message);
+        console.error('Serial data will not be persisted.');
+    }
+};
+
+const persistData = (payload, receivedAt) => {
+    if (!dataCollection) return;
+
+    dataCollection
+        .insertOne({ ...payload, receivedAt: new Date(receivedAt) })
+        .catch((error) => console.error('MongoDB insert failed:', error.message));
+};
 
 // sendFile will go here
 const __filename = fileURLToPath(import.meta.url);
@@ -127,11 +157,13 @@ const setupSerialBridge = async () => {
                 return;
             }
 
+            const receivedAt = new Date().toISOString();
             console.log('Serial data received:', payload);
+            persistData(payload, receivedAt);
             broadcast({
                 type: 'serial',
                 data: payload,
-                receivedAt: new Date().toISOString(),
+                receivedAt,
             });
         });
     } catch (error) {
@@ -144,6 +176,7 @@ const setupSerialBridge = async () => {
 server.listen(port, async () => {
     console.log('Server started at http://localhost:' + port);
     console.log('WebSocket server started at ws://localhost:' + port);
+    await setupMongo();
     await setupSerialBridge();
 });
 
