@@ -12,6 +12,8 @@ dotenv.config();
 
 const users = { janedoe: { userID: 1 } };
 const clients = [];
+let serialPort = null;
+const VALID_GEO_STATES = ['inside', 'approaching', 'outside'];
 
 const app = express();
 app.use(cors());
@@ -91,7 +93,7 @@ const setupSerialBridge = async () => {
         const { SerialPort } = await import('serialport');
         const { ReadlineParser } = await import('@serialport/parser-readline');
 
-        const serialPort = new SerialPort({
+        serialPort = new SerialPort({
             path: serialPortPath,
             baudRate: serialBaudRate,
         });
@@ -148,6 +150,35 @@ server.listen(port, async () => {
 app.get('/', (req, res) => {
     console.log(req.query);
     res.send({ message: 'Express says Hello World!' });
+});
+
+app.post('/api/geofence', (req, res) => {
+    const state = (req.body?.state || '').toString().toLowerCase();
+
+    if (!VALID_GEO_STATES.includes(state)) {
+        res.status(400).send({
+            message: `state must be one of: ${VALID_GEO_STATES.join(', ')}`,
+        });
+        return;
+    }
+
+    if (!serialPort || !serialPort.isOpen) {
+        res.status(503).send({
+            message: 'Serial port not open. Check SERIAL_PORT env and that the receiver ESP is connected.',
+        });
+        return;
+    }
+
+    const line = JSON.stringify({ type: 'geo', state }) + '\n';
+    serialPort.write(line, (err) => {
+        if (err) {
+            console.error('Geofence serial write failed:', err.message);
+            res.status(500).send({ message: 'Serial write failed', error: err.message });
+            return;
+        }
+        console.log('Geofence -> serial:', line.trim());
+        res.send({ message: 'Geofence state forwarded.', sent: line.trim() });
+    });
 });
 
 app.post('/api/broadcast', (req, res) => {
