@@ -180,9 +180,8 @@ server.listen(port, async () => {
     await setupSerialBridge();
 });
 
-app.get('/', (req, res) => {
-    console.log(req.query);
-    res.send({ message: 'Express says Hello World!' });
+app.get('/', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.post('/api/geofence', (req, res) => {
